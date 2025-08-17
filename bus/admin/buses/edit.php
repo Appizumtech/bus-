@@ -8,6 +8,13 @@ $busStmt->execute([$id]);
 $bus = $busStmt->fetch();
 if (!$bus) { echo '<div class="alert alert-danger">Bus not found</div>'; require '../includes/footer.php'; exit; }
 
+// Authorization: owner can edit only their bus
+if (($_SESSION['role'] ?? '') === 'owner' && (int)$bus['owner_id'] !== (int)($_SESSION['user_id'] ?? 0)) {
+	echo '<div class="alert alert-danger">Not authorized.</div>';
+	require '../includes/footer.php';
+	exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$name = trim($_POST['name'] ?? '');
 	$source = trim($_POST['source'] ?? '');
@@ -20,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$fare = (float)($_POST['fare'] ?? 0);
 	$seat_layout = $_POST['seat_layout'] ?? '2x2';
 	$owner_id = isset($_POST['owner_id']) && $_POST['owner_id'] !== '' ? (int)$_POST['owner_id'] : null;
+	if (($_SESSION['role'] ?? '') === 'owner') { $owner_id = (int)($_SESSION['user_id'] ?? 0); }
 
 	$upd = $pdo->prepare('UPDATE buses SET owner_id = ?, name = ?, source = ?, destination = ?, travel_date = ?, departure_time = ?, arrival_time = ?, bus_type = ?, total_seats = ?, fare = ?, seat_layout = ? WHERE id = ?');
 	$upd->execute([$owner_id, $name, $source, $destination, $travel_date, $departure_time, $arrival_time, $bus_type, $total_seats, $fare, $seat_layout, $id]);
@@ -83,12 +91,16 @@ $owners = $pdo->query("SELECT id, name FROM users WHERE role = 'owner' ORDER BY 
         </div>
         <div class="col-md-4">
             <label class="form-label">Owner</label>
+            <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
+            <input type="text" class="form-control" value="Myself" disabled>
+            <?php else: ?>
             <select name="owner_id" class="form-select">
                 <option value="">None</option>
                 <?php foreach ($owners as $o): ?>
                 <option value="<?= $o['id'] ?>"<?= (string)$bus['owner_id']===(string)$o['id']?' selected':''; ?>><?= htmlspecialchars($o['name']) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php endif; ?>
         </div>
         <div class="col-12">
             <button class="btn btn-primary">Save</button>

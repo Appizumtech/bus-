@@ -18,6 +18,13 @@ if (!$busRow) {
 	exit;
 }
 
+// Authorization: owners can manage only their buses
+if (($_SESSION['role'] ?? '') === 'owner' && (int)$busRow['owner_id'] !== (int)($_SESSION['user_id'] ?? 0)) {
+	echo '<div class="alert alert-danger">Not authorized for this bus.</div>';
+	require '../includes/footer.php';
+	exit;
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$type = $_POST['type'] ?? '';
 	$name = trim($_POST['name'] ?? '');

@@ -16,6 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$fare = (float)($_POST['fare'] ?? 0);
 	$seat_layout = $_POST['seat_layout'] ?? '2x2';
 	$owner_id = isset($_POST['owner_id']) && $_POST['owner_id'] !== '' ? (int)$_POST['owner_id'] : null;
+
+	// If logged-in user is owner, force owner_id to self
+	if (($_SESSION['role'] ?? '') === 'owner') {
+		$owner_id = (int)($_SESSION['user_id'] ?? 0);
+	}
+
 	$generate_seats = isset($_POST['generate_seats']);
 
 	$ins = $pdo->prepare('INSERT INTO buses (owner_id, name, source, destination, travel_date, departure_time, arrival_time, bus_type, total_seats, available_seats, fare, seat_layout) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
@@ -96,12 +102,16 @@ $owners = $pdo->query("SELECT id, name FROM users WHERE role = 'owner' ORDER BY 
         </div>
         <div class="col-md-4">
             <label class="form-label">Owner</label>
+            <?php if (($_SESSION['role'] ?? '') === 'owner'): ?>
+            <input type="text" class="form-control" value="Myself" disabled>
+            <?php else: ?>
             <select name="owner_id" class="form-select">
                 <option value="">None</option>
                 <?php foreach ($owners as $o): ?>
                 <option value="<?= $o['id'] ?>"><?= htmlspecialchars($o['name']) ?></option>
                 <?php endforeach; ?>
             </select>
+            <?php endif; ?>
         </div>
         <div class="col-md-4 d-flex align-items-center">
             <div class="form-check mt-4">

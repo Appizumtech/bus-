@@ -2,7 +2,16 @@
 require '../includes/header.php';
 require '../includes/db.php';
 
-$buses = $pdo->query("SELECT id, name, source, destination, travel_date FROM buses ORDER BY travel_date DESC")->fetchAll();
+$role = $_SESSION['role'] ?? '';
+$userId = $_SESSION['user_id'] ?? 0;
+
+if ($role === 'owner') {
+	$stmt = $pdo->prepare("SELECT id, name, source, destination, travel_date FROM buses WHERE owner_id = ? ORDER BY travel_date DESC");
+	$stmt->execute([$userId]);
+	$buses = $stmt->fetchAll();
+} else {
+	$buses = $pdo->query("SELECT id, name, source, destination, travel_date FROM buses ORDER BY travel_date DESC")->fetchAll();
+}
 ?>
 <div class="container">
     <h1>Routes & Points</h1>

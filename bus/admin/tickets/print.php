@@ -8,6 +8,17 @@ if ($bookingId <= 0) {
 	exit;
 }
 
+// Authorization check
+$role = $_SESSION['role'] ?? '';
+$userId = (int)($_SESSION['user_id'] ?? 0);
+
+$auth = $pdo->prepare('SELECT b.user_id, bs.owner_id FROM bookings b JOIN buses bs ON b.bus_id = bs.id WHERE b.id = ?');
+$auth->execute([$bookingId]);
+$authRow = $auth->fetch();
+if (!$authRow) { echo 'Booking not found'; exit; }
+if ($role === 'owner' && (int)$authRow['owner_id'] !== $userId) { echo 'Not authorized'; exit; }
+if ($role === 'agent' && (int)$authRow['user_id'] !== $userId) { echo 'Not authorized'; exit; }
+
 // Ensure a ticket exists
 $ticketStmt = $pdo->prepare('SELECT * FROM tickets WHERE booking_id = ? LIMIT 1');
 $ticketStmt->execute([$bookingId]);
@@ -35,8 +46,8 @@ if (!$b) {
 $seats = $pdo->prepare('SELECT s.seat_number FROM booking_seats bs JOIN seats s ON bs.seat_id = s.id WHERE bs.booking_id = ?');
 $seats->execute([$bookingId]);
 $seatNumbers = array_map(function($r){ return $r['seat_number']; }, $seats->fetchAll());
-
-?><!DOCTYPE html>
+?>
+<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8">
