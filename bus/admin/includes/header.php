@@ -35,6 +35,9 @@ require 'auth.php';
                             <a class="nav-link" href="routes/index.php">Routes & Points</a>
                         </li>
                         <li class="nav-item">
+                            <a class="nav-link" href="seats/index.php">Seats</a>
+                        </li>
+                        <li class="nav-item">
                             <a class="nav-link" href="settings.php">Settings</a>
                         </li>
                         <li class="nav-item">

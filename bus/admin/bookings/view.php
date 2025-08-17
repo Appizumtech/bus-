@@ -3,11 +3,25 @@ require '../includes/header.php';
 require '../includes/db.php';
 
 $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+$role = $_SESSION['role'] ?? '';
+$userId = (int)($_SESSION['user_id'] ?? 0);
 
-$bookingStmt = $pdo->prepare('SELECT b.*, bs.name AS bus_name, bs.source, bs.destination, bs.departure_time, bs.arrival_time, u.name AS booked_by FROM bookings b JOIN buses bs ON b.bus_id = bs.id LEFT JOIN users u ON b.user_id = u.id WHERE b.id = ?');
-$bookingStmt->execute([$id]);
-$booking = $bookingStmt->fetch();
+$sql = "SELECT b.*, bs.owner_id, bs.name AS bus_name, bs.source, bs.destination FROM bookings b JOIN buses bs ON b.bus_id = bs.id WHERE b.id = ?";
+$stmt = $pdo->prepare($sql);
+$stmt->execute([$id]);
+$booking = $stmt->fetch();
 if (!$booking) { echo '<div class="alert alert-danger">Booking not found</div>'; require '../includes/footer.php'; exit; }
+
+if ($role === 'owner' && (int)$booking['owner_id'] !== $userId) {
+	echo '<div class="alert alert-danger">Not authorized.</div>';
+	require '../includes/footer.php';
+	exit;
+}
+if ($role === 'agent' && (int)$booking['user_id'] !== $userId) {
+	echo '<div class="alert alert-danger">Not authorized.</div>';
+	require '../includes/footer.php';
+	exit;
+}
 
 $seats = $pdo->prepare('SELECT s.seat_number FROM booking_seats bs JOIN seats s ON bs.seat_id = s.id WHERE bs.booking_id = ? ORDER BY s.seat_number');
 $seats->execute([$id]);

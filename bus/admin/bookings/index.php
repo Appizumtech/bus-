@@ -2,13 +2,30 @@
 require '../includes/header.php';
 require '../includes/db.php';
 
-$bookings = $pdo->query("
+$role = $_SESSION['role'] ?? '';
+$userId = $_SESSION['user_id'] ?? 0;
+
+$where = [];
+$params = [];
+if ($role === 'owner') {
+	$where[] = 'bs.owner_id = ?';
+	$params[] = $userId;
+} elseif ($role === 'agent') {
+	$where[] = 'b.user_id = ?';
+	$params[] = $userId;
+}
+$whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+
+$bookings = $pdo->prepare("
     SELECT b.*, bs.name AS bus_name, bs.source, bs.destination, u.name AS booked_by
     FROM bookings b
     JOIN buses bs ON b.bus_id = bs.id
     LEFT JOIN users u ON b.user_id = u.id
+    $whereSql
     ORDER BY b.created_at DESC
-")->fetchAll();
+");
+$bookings->execute($params);
+$bookings = $bookings->fetchAll();
 ?>
 
 <div class="container">

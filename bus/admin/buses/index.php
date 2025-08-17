@@ -2,8 +2,20 @@
 require '../includes/header.php';
 require '../includes/db.php';
 
-$sql = "SELECT bs.*, u.name AS owner_name FROM buses bs LEFT JOIN users u ON bs.owner_id = u.id ORDER BY bs.travel_date DESC";
-$buses = $pdo->query($sql)->fetchAll();
+$role = $_SESSION['role'] ?? '';
+$userId = $_SESSION['user_id'] ?? 0;
+
+$sql = "SELECT bs.*, u.name AS owner_name FROM buses bs LEFT JOIN users u ON bs.owner_id = u.id";
+$params = [];
+if ($role === 'owner') {
+	$sql .= ' WHERE bs.owner_id = ?';
+	$params[] = $userId;
+}
+$sql .= ' ORDER BY bs.travel_date DESC';
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
+$buses = $stmt->fetchAll();
 ?>
 
 <div class="container">
