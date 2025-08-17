@@ -12,19 +12,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 	$name = trim($_POST['name'] ?? '');
 	$source = trim($_POST['source'] ?? '');
 	$destination = trim($_POST['destination'] ?? '');
-	$travel_date = $_POST['travel_date'] ?? '';
+	$travel_date = $_POST['travel_date'] !== '' ? $_POST['travel_date'] : null;
 	$departure_time = $_POST['departure_time'] ?? '';
 	$arrival_time = $_POST['arrival_time'] ?? '';
 	$bus_type = $_POST['bus_type'] ?? '';
 	$total_seats = (int)($_POST['total_seats'] ?? 0);
 	$fare = (float)($_POST['fare'] ?? 0);
 	$seat_layout = $_POST['seat_layout'] ?? '2x2';
+	$deck_type = $_POST['deck_type'] ?? 'lower_only';
 	$owner_id = isset($_POST['owner_id']) && $_POST['owner_id'] !== '' ? (int)$_POST['owner_id'] : null;
 
-	$upd = $pdo->prepare('UPDATE buses SET owner_id = ?, name = ?, source = ?, destination = ?, travel_date = ?, departure_time = ?, arrival_time = ?, bus_type = ?, total_seats = ?, fare = ?, seat_layout = ? WHERE id = ?');
-	$upd->execute([$owner_id, $name, $source, $destination, $travel_date, $departure_time, $arrival_time, $bus_type, $total_seats, $fare, $seat_layout, $id]);
+	$upd = $pdo->prepare('UPDATE buses SET owner_id = ?, name = ?, source = ?, destination = ?, travel_date = ?, departure_time = ?, arrival_time = ?, bus_type = ?, total_seats = ?, fare = ?, seat_layout = ?, deck_type = ? WHERE id = ?');
+	$upd->execute([$owner_id, $name, $source, $destination, $travel_date, $departure_time, $arrival_time, $bus_type, $total_seats, $fare, $seat_layout, $deck_type, $id]);
 	$bus = array_merge($bus, $_POST);
 	$bus['owner_id'] = $owner_id;
+	$bus['travel_date'] = $travel_date;
+	$bus['deck_type'] = $deck_type;
 	echo '<div class="alert alert-success">Updated.</div>';
 }
 
@@ -46,8 +49,8 @@ $owners = $pdo->query("SELECT id, name FROM users WHERE role = 'owner' ORDER BY 
             <input class="form-control" name="destination" value="<?= htmlspecialchars($bus['destination']) ?>" required>
         </div>
         <div class="col-md-3">
-            <label class="form-label">Travel Date</label>
-            <input type="date" class="form-control" name="travel_date" value="<?= htmlspecialchars($bus['travel_date']) ?>" required>
+            <label class="form-label">Travel Date (optional)</label>
+            <input type="date" class="form-control" name="travel_date" value="<?= htmlspecialchars($bus['travel_date']) ?>">
         </div>
         <div class="col-md-3">
             <label class="form-label">Departure Time</label>
@@ -60,7 +63,7 @@ $owners = $pdo->query("SELECT id, name FROM users WHERE role = 'owner' ORDER BY 
         <div class="col-md-3">
             <label class="form-label">Type</label>
             <select name="bus_type" class="form-select" required>
-                <?php foreach (["AC Sleeper","AC Seater","Non-AC Seater"] as $t): ?>
+                <?php foreach (["AC Sleeper","AC Seater","Non-AC Sleeper","Non-AC Seater"] as $t): ?>
                     <option value="<?= $t ?>"<?= $bus['bus_type']===$t?' selected':''; ?>><?= $t ?></option>
                 <?php endforeach; ?>
             </select>
@@ -78,6 +81,14 @@ $owners = $pdo->query("SELECT id, name FROM users WHERE role = 'owner' ORDER BY 
             <select name="seat_layout" class="form-select" required>
                 <?php foreach (["2x2","2x1","3x2"] as $l): ?>
                     <option value="<?= $l ?>"<?= $bus['seat_layout']===$l?' selected':''; ?>><?= $l ?></option>
+                <?php endforeach; ?>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Deck</label>
+            <select name="deck_type" class="form-select" required>
+                <?php foreach (["lower_only"=>"Lower Only","upper_and_lower"=>"Upper & Lower"] as $val=>$label): ?>
+                    <option value="<?= $val ?>"<?= ($bus['deck_type'] ?? 'lower_only')===$val?' selected':''; ?>><?= $label ?></option>
                 <?php endforeach; ?>
             </select>
         </div>

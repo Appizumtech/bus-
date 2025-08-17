@@ -188,3 +188,9 @@ CREATE TABLE IF NOT EXISTS subscriptions (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (owner_id) REFERENCES users(id)
 ); 
+
+-- Allow buses without a fixed travel date
+ALTER TABLE buses MODIFY travel_date DATE NULL;
+
+-- Deck type: single or double deck
+ALTER TABLE buses ADD COLUMN IF NOT EXISTS deck_type ENUM('lower_only','upper_and_lower') NOT NULL DEFAULT 'lower_only' AFTER seat_layout; 
