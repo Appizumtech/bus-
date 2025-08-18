@@ -12,14 +12,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && $password === $user['password']) { // replace with password_verify when hashes are used
-        $_SESSION['user_id'] = (int)$user['id'];
-        $_SESSION['role'] = $user['role'];
-        header('Location: index.php');
-        exit;
-    } else {
-        $error = 'Invalid credentials';
+    if ($user) {
+        $stored = (string)$user['password'];
+        $valid = password_verify($password, $stored) || $password === $stored;
+        if ($valid) {
+            // Auto-upgrade plain passwords to hashed
+            if ($password === $stored || (strpos($stored, '$2y$') !== 0 && strpos($stored, '$argon2') !== 0)) {
+                $newHash = password_hash($password, PASSWORD_BCRYPT);
+                $up = $pdo->prepare('UPDATE users SET password = ? WHERE id = ?');
+                $up->execute([ $newHash, (int)$user['id'] ]);
+            }
+            $_SESSION['user_id'] = (int)$user['id'];
+            $_SESSION['role'] = $user['role'];
+            header('Location: index.php');
+            exit;
+        }
     }
+    $error = 'Invalid credentials';
 }
 ?>
 <!DOCTYPE html>

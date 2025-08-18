@@ -13,8 +13,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'All fields are required';
     } else {
         try {
+            $hash = password_hash($password, PASSWORD_BCRYPT);
             $stmt = $pdo->prepare('INSERT INTO users (name, email, password, role) VALUES (?, ?, ?, "customer")');
-            $stmt->execute([ $name, $email, $password ]); // replace with password_hash later
+            $stmt->execute([ $name, $email, $hash ]);
             $_SESSION['user_id'] = (int)$pdo->lastInsertId();
             $_SESSION['role'] = 'customer';
             header('Location: index.php');

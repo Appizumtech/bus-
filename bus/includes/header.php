@@ -62,6 +62,9 @@
                                 <li class="nav-item">
                                     <a class="nav-link" href="contact.php">Contact</a>
                                 </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="my_bookings.php">My Bookings</a>
+                                </li>
                                 <li><a href="#book-ticket" class="hdr-btn">Book Now</a></li>
                                 <li><a href="" class="hdr-btn">Cancel Ticket</a></li>
                             </ul>
