@@ -26,19 +26,30 @@
     <section class="booking-section py-5">
         <div class="container">
             <?php
-            if (isset($_GET['bus_id'])) {
-                $bus_id = $_GET['bus_id'];
-                // Here you would typically fetch bus details from database
-                // For now using sample data
-                $bus_details = [
-                    'name' => 'Luxury Express',
-                    'from' => 'Hazaribagh',
-                    'to' => 'Ranchi',
-                    'departure' => '06:00 AM',
-                    'arrival' => '10:00 AM',
-                    'price' => 1500,
-                    'date' => date('Y-m-d')
-                ];
+            // Accept bus_id from POST (preferred from seat selection) or GET fallback
+            $bus_id = null;
+            $selected_seat_ids = '';
+            $selected_seat_numbers = '';
+            if (isset($_POST['bus_id'])) { $bus_id = (int)$_POST['bus_id']; }
+            if (!$bus_id && isset($_GET['bus_id'])) { $bus_id = (int)$_GET['bus_id']; }
+            if (isset($_POST['selected_seat_ids'])) { $selected_seat_ids = trim($_POST['selected_seat_ids']); }
+            if (isset($_POST['selected_seat_numbers'])) { $selected_seat_numbers = trim($_POST['selected_seat_numbers']); }
+
+            if ($bus_id) {
+                require_once __DIR__ . '/admin/includes/db.php';
+                $stmt = $pdo->prepare('SELECT * FROM buses WHERE id = ?');
+                $stmt->execute([ $bus_id ]);
+                $bus = $stmt->fetch();
+                if (!$bus) {
+                    echo '<div class="alert alert-danger">Invalid bus selection.</div>';
+                } else {
+                    $seatCount = 0;
+                    if ($selected_seat_ids !== '') {
+                        $seatIdArr = array_values(array_filter(array_map('intval', explode(',', $selected_seat_ids))));
+                        $seatCount = count($seatIdArr);
+                    }
+                    $baseFare = (float)$bus['fare'];
+                    $totalAmount = $baseFare * max(1, $seatCount);
             ?>
             <div class="row">
                 <div class="col-md-8">
@@ -49,14 +60,14 @@
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <p><strong>Bus:</strong> <?php echo htmlspecialchars($bus_details['name']); ?></p>
-                                            <p><strong>From:</strong> <?php echo htmlspecialchars($bus_details['from']); ?></p>
-                                            <p><strong>To:</strong> <?php echo htmlspecialchars($bus_details['to']); ?></p>
+                                            <p><strong>Bus:</strong> <?php echo htmlspecialchars($bus['name']); ?></p>
+                                            <p><strong>From:</strong> <?php echo htmlspecialchars($bus['source']); ?></p>
+                                            <p><strong>To:</strong> <?php echo htmlspecialchars($bus['destination']); ?></p>
                                         </div>
                                         <div class="col-md-6">
-                                            <p><strong>Date:</strong> <?php echo htmlspecialchars($bus_details['date']); ?></p>
-                                            <p><strong>Departure:</strong> <?php echo htmlspecialchars($bus_details['departure']); ?></p>
-                                            <p><strong>Arrival:</strong> <?php echo htmlspecialchars($bus_details['arrival']); ?></p>
+                                            <p><strong>Date:</strong> <?php echo htmlspecialchars($bus['travel_date']); ?></p>
+                                            <p><strong>Departure:</strong> <?php echo htmlspecialchars($bus['departure_time']); ?></p>
+                                            <p><strong>Arrival:</strong> <?php echo htmlspecialchars($bus['arrival_time']); ?></p>
                                         </div>
                                     </div>
                                 </div>
@@ -108,7 +119,9 @@
                             </div>
 
                             <input type="hidden" name="bus_id" value="<?php echo htmlspecialchars($bus_id); ?>">
-                            <input type="hidden" name="fare" value="<?php echo htmlspecialchars($bus_details['price']); ?>">
+                            <input type="hidden" name="seat_ids" value="<?php echo htmlspecialchars($selected_seat_ids); ?>">
+                            <input type="hidden" name="amount" value="<?php echo htmlspecialchars($totalAmount); ?>">
+                            <input type="hidden" name="seat_numbers" value="<?php echo htmlspecialchars($selected_seat_numbers); ?>">
                             
                             <div class="text-right mt-4">
                                 <button type="submit" class="btn btn-primary">Proceed to Payment</button>
@@ -126,17 +139,17 @@
                             <div class="card-body">
                                 <div class="fare-details">
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>Base Fare</span>
-                                        <span>₹<?php echo htmlspecialchars($bus_details['price']); ?></span>
+                                        <span>Base Fare (per seat)</span>
+                                        <span>₹<?php echo number_format((float)$baseFare, 2); ?></span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-2">
-                                        <span>Tax</span>
-                                        <span>₹<?php echo $bus_details['price'] * 0.05; ?></span>
+                                        <span>Number of Seats</span>
+                                        <span><?php echo (int)$seatCount; ?></span>
                                     </div>
                                     <hr>
                                     <div class="d-flex justify-content-between total-fare">
                                         <strong>Total Amount</strong>
-                                        <strong>₹<?php echo $bus_details['price'] + ($bus_details['price'] * 0.05); ?></strong>
+                                        <strong>₹<?php echo number_format((float)$totalAmount, 2); ?></strong>
                                     </div>
                                 </div>
                             </div>
@@ -145,6 +158,7 @@
                 </div>
             </div>
             <?php
+                }
             } else {
                 echo '<div class="alert alert-danger">Invalid booking request. Please select a bus first.</div>';
             }

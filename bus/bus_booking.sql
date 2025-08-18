@@ -165,6 +165,20 @@ CREATE TABLE IF NOT EXISTS tickets (
     FOREIGN KEY (issued_by_user_id) REFERENCES users(id)
 );
 
+-- Seat lock table for temporary reservations
+CREATE TABLE IF NOT EXISTS seat_locks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    seat_id INT NOT NULL,
+    bus_id INT NOT NULL,
+    session_id VARCHAR(128) NOT NULL,
+    locked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    UNIQUE KEY uniq_seat (seat_id),
+    KEY idx_expires (expires_at),
+    FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE CASCADE,
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE
+);
+
 -- Admin settings (single row)
 CREATE TABLE IF NOT EXISTS admin_settings (
     id TINYINT PRIMARY KEY CHECK (id = 1),
