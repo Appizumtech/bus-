@@ -12,7 +12,16 @@
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <p style="text-align: right;"><i class="fa-solid fa-location-dot"></i> New Forest Colony, Hazaribagh, Jharkhand 825301</p>
+                    <div class="d-flex justify-content-end align-items-center gap-3">
+                        <p class="mb-0"><i class="fa-solid fa-location-dot"></i> New Forest Colony, Hazaribagh, Jharkhand 825301</p>
+                        <?php if (session_status() === PHP_SESSION_NONE) { session_start(); } ?>
+                        <?php if (isset($_SESSION['user_id'])): ?>
+                            <a class="btn btn-sm btn-outline-light" href="logout.php">Logout</a>
+                        <?php else: ?>
+                            <a class="btn btn-sm btn-outline-light" href="login.php">Login</a>
+                            <a class="btn btn-sm btn-primary" href="register.php">Sign Up</a>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </div>
         </div>
@@ -52,6 +61,9 @@
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link" href="contact.php">Contact</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="my_bookings.php">My Bookings</a>
                                 </li>
                                 <li><a href="#book-ticket" class="hdr-btn">Book Now</a></li>
                                 <li><a href="" class="hdr-btn">Cancel Ticket</a></li>

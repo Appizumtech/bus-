@@ -84,6 +84,11 @@ INSERT INTO users (name, email, password, role) VALUES
 ('Super Admin', 'admin@example.com', 'admin123', 'super_admin')
 ON DUPLICATE KEY UPDATE email = email;
 
+-- Seed a sample customer (password: customer123)
+INSERT INTO users (name, email, password, role) VALUES
+('Sample Customer', 'customer@example.com', 'customer123', 'customer')
+ON DUPLICATE KEY UPDATE email = email;
+
 -- Extend buses with an optional owner link
 ALTER TABLE buses ADD COLUMN IF NOT EXISTS owner_id INT NULL AFTER id;
 ALTER TABLE buses ADD CONSTRAINT fk_buses_owner FOREIGN KEY (owner_id) REFERENCES users(id);
@@ -163,6 +168,20 @@ CREATE TABLE IF NOT EXISTS tickets (
     issued_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (booking_id) REFERENCES bookings(id) ON DELETE CASCADE,
     FOREIGN KEY (issued_by_user_id) REFERENCES users(id)
+);
+
+-- Seat lock table for temporary reservations
+CREATE TABLE IF NOT EXISTS seat_locks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    seat_id INT NOT NULL,
+    bus_id INT NOT NULL,
+    session_id VARCHAR(128) NOT NULL,
+    locked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    expires_at TIMESTAMP NOT NULL,
+    UNIQUE KEY uniq_seat (seat_id),
+    KEY idx_expires (expires_at),
+    FOREIGN KEY (seat_id) REFERENCES seats(id) ON DELETE CASCADE,
+    FOREIGN KEY (bus_id) REFERENCES buses(id) ON DELETE CASCADE
 );
 
 -- Admin settings (single row)

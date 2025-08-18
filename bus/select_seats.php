@@ -1,4 +1,5 @@
 <?php
+session_start();
 // Database connection
 $servername = "localhost";
 $username = "root";
@@ -17,6 +18,21 @@ if (!isset($_GET['bus_id'])) {
 }
 
 $bus_id = $conn->real_escape_string($_GET['bus_id']);
+
+// Cleanup expired locks: free seats back to available
+$checkTable = $conn->query("SHOW TABLES LIKE 'seat_locks'");
+if ($checkTable && $checkTable->num_rows > 0) {
+    $expired = $conn->query("SELECT seat_id FROM seat_locks WHERE expires_at < NOW()");
+    $expiredIds = [];
+    if ($expired) {
+        while ($row = $expired->fetch_assoc()) { $expiredIds[] = (int)$row['seat_id']; }
+        if (!empty($expiredIds)) {
+            $idList = implode(',', $expiredIds);
+            $conn->query("DELETE FROM seat_locks WHERE seat_id IN ($idList)");
+            $conn->query("UPDATE seats SET status = 'available' WHERE id IN ($idList) AND status <> 'booked'");
+        }
+    }
+}
 
 // Get bus details
 $sql = "SELECT * FROM buses WHERE id = ?";
@@ -158,6 +174,7 @@ $seats = $stmt->get_result();
             <div class="row">
                 <div class="col-md-8">
                     <div class="bus-layout">
+                        <?php if (isset($_SESSION['error'])) { echo '<div class="alert alert-danger">' . htmlspecialchars($_SESSION['error']) . '</div>'; unset($_SESSION['error']); } ?>
                         <div class="legend">
                             <div class="legend-item">
                                 <div class="legend-color" style="border: 2px solid #192080"></div>
@@ -229,7 +246,8 @@ $seats = $stmt->get_result();
                         <div class="text-center mt-4">
                             <form action="booking.php" method="POST" id="booking-form">
                                 <input type="hidden" name="bus_id" value="<?php echo $bus_id; ?>">
-                                <input type="hidden" name="selected_seats" id="selected-seats-input">
+                                <input type="hidden" name="selected_seat_ids" id="selected-seat-ids-input">
+                                <input type="hidden" name="selected_seat_numbers" id="selected-seat-numbers-input">
                                 <button type="submit" class="proceed-btn" id="proceed-btn" disabled>
                                     Proceed to Book
                                 </button>
@@ -246,46 +264,76 @@ $seats = $stmt->get_result();
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const selectedSeats = new Set();
+            const selectedSeatIdToNumber = new Map();
             const baseFare = <?php echo $bus['fare']; ?>;
-            
-            function updateSelectedSeats() {
+
+            function renderSelectedList() {
                 const list = document.getElementById('selected-seats-list');
                 const count = document.getElementById('seat-count');
                 const total = document.getElementById('total-fare');
                 const proceedBtn = document.getElementById('proceed-btn');
-                const selectedSeatsInput = document.getElementById('selected-seats-input');
-                
-                if (selectedSeats.size === 0) {
+                const idsInput = document.getElementById('selected-seat-ids-input');
+                const numbersInput = document.getElementById('selected-seat-numbers-input');
+
+                if (selectedSeatIdToNumber.size === 0) {
                     list.innerHTML = '<p>No seats selected</p>';
                     proceedBtn.disabled = true;
                 } else {
-                    const seatsArray = Array.from(selectedSeats);
-                    list.innerHTML = seatsArray.map(seatNumber => 
-                        `<div class="selected-seat-item">${seatNumber}</div>`
-                    ).join('');
+                    const seatNumbers = Array.from(selectedSeatIdToNumber.values());
+                    list.innerHTML = seatNumbers.map(n => `<div class="selected-seat-item">${n}</div>`).join('');
                     proceedBtn.disabled = false;
                 }
-                
-                count.textContent = selectedSeats.size;
-                total.textContent = '₹' + (selectedSeats.size * baseFare).toFixed(2);
-                selectedSeatsInput.value = Array.from(selectedSeats).join(',');
+
+                count.textContent = selectedSeatIdToNumber.size;
+                total.textContent = '₹' + (selectedSeatIdToNumber.size * baseFare).toFixed(2);
+                idsInput.value = Array.from(selectedSeatIdToNumber.keys()).join(',');
+                numbersInput.value = Array.from(selectedSeatIdToNumber.values()).join(',');
             }
 
-            document.querySelectorAll('.seat.available').forEach(seat => {
-                seat.addEventListener('click', function() {
-                    const seatNumber = this.dataset.seatNumber;
-                    
-                    if (this.classList.contains('selected')) {
-                        this.classList.remove('selected');
-                        selectedSeats.delete(seatNumber);
-                    } else {
-                        this.classList.add('selected');
-                        selectedSeats.add(seatNumber);
-                    }
-                    
-                    updateSelectedSeats();
-                });
+            function handleSeatClick(el) {
+                const seatId = el.dataset.seatId;
+                const seatNumber = el.dataset.seatNumber;
+                const isSelected = el.classList.contains('selected');
+
+                if (!isSelected) {
+                    $.post('api/lock_seat.php', { seat_id: seatId, bus_id: <?php echo (int)$bus_id; ?> })
+                        .done(function(resp) {
+                            if (resp && resp.success) {
+                                el.classList.add('selected');
+                                selectedSeatIdToNumber.set(seatId, seatNumber);
+                                renderSelectedList();
+                            } else {
+                                alert(resp && resp.message ? resp.message : 'Unable to lock seat.');
+                                if (resp && resp.status) {
+                                    el.classList.remove('available', 'selected', 'reserved', 'booked');
+                                    el.classList.add(resp.status);
+                                }
+                            }
+                        })
+                        .fail(function() {
+                            alert('Network error while locking seat.');
+                        });
+                } else {
+                    $.post('api/unlock_seat.php', { seat_id: seatId })
+                        .done(function(resp) {
+                            if (resp && resp.success) {
+                                el.classList.remove('selected');
+                                selectedSeatIdToNumber.delete(seatId);
+                                renderSelectedList();
+                            } else {
+                                alert(resp && resp.message ? resp.message : 'Unable to unlock seat.');
+                            }
+                        })
+                        .fail(function() {
+                            alert('Network error while unlocking seat.');
+                        });
+                }
+            }
+
+            document.querySelectorAll('.seat.available, .seat.reserved, .seat.booked').forEach(function(el) {
+                if (!el.classList.contains('booked') && !el.classList.contains('reserved')) {
+                    el.addEventListener('click', function() { handleSeatClick(el); });
+                }
             });
         });
     </script>
