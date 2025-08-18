@@ -76,8 +76,14 @@ try {
 
     // Create booking
     $bookingRef = 'BK' . date('Ymd') . random_int(1000, 9999);
-    $insBooking = $pdo->prepare('INSERT INTO bookings (booking_ref, bus_id, user_id, status, amount, travel_date) VALUES (?, ?, NULL, ?, ?, ?)');
-    $insBooking->execute([ $bookingRef, $busId, 'pending', $amount, $bus['travel_date'] ]);
+    $userId = isset($_SESSION['user_id']) ? (int)$_SESSION['user_id'] : null;
+    if ($userId) {
+        $insBooking = $pdo->prepare('INSERT INTO bookings (booking_ref, bus_id, user_id, status, amount, travel_date) VALUES (?, ?, ?, ?, ?, ?)');
+        $insBooking->execute([ $bookingRef, $busId, $userId, 'pending', $amount, $bus['travel_date'] ]);
+    } else {
+        $insBooking = $pdo->prepare('INSERT INTO bookings (booking_ref, bus_id, user_id, status, amount, travel_date) VALUES (?, ?, NULL, ?, ?, ?)');
+        $insBooking->execute([ $bookingRef, $busId, 'pending', $amount, $bus['travel_date'] ]);
+    }
     $bookingId = (int)$pdo->lastInsertId();
 
     // Link passenger

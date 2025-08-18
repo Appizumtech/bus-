@@ -84,6 +84,11 @@ INSERT INTO users (name, email, password, role) VALUES
 ('Super Admin', 'admin@example.com', 'admin123', 'super_admin')
 ON DUPLICATE KEY UPDATE email = email;
 
+-- Seed a sample customer (password: customer123)
+INSERT INTO users (name, email, password, role) VALUES
+('Sample Customer', 'customer@example.com', 'customer123', 'customer')
+ON DUPLICATE KEY UPDATE email = email;
+
 -- Extend buses with an optional owner link
 ALTER TABLE buses ADD COLUMN IF NOT EXISTS owner_id INT NULL AFTER id;
 ALTER TABLE buses ADD CONSTRAINT fk_buses_owner FOREIGN KEY (owner_id) REFERENCES users(id);
